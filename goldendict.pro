@@ -10,10 +10,20 @@ VERSION = 1.0.1+git
 # rebuilt; and doing it here is required too since any other way the RCC
 # compiler would complain if version.txt wouldn't exist (fresh checkouts).
 
-system(git describe --tags --always --dirty > version.txt): hasGit=1
+exists( .git ) {
+    versionCommand = git describe --tags --always --dirty
+} else {
+    exists( .hg ) {
+        versionCommand = hg -q id
+    }
+}
 
-isEmpty( hasGit ) {
-  message(Failed to precisely describe the version via Git -- using the default version string)
+!isEmpty( versionCommand ) {
+    system($$versionCommand > version.txt): hasVersion=1
+}
+
+isEmpty( hasVersion ) {
+  message(Failed to precisely describe the version via revision control -- using the default version string)
   system(echo $$VERSION > version.txt)
 }
 
@@ -34,7 +44,7 @@ LIBS += \
         -lz \
         -lbz2
 
-win32 { 
+win32 {
     LIBS += -liconv \
         -lwsock32 \
         -lwinmm \
@@ -293,7 +303,7 @@ SOURCES += folding.cc \
     decompress.cc \
     aard.cc \
     mruqmenu.cc
-win32 { 
+win32 {
     SOURCES += mouseover_win32/ThTypes.c \
                wordbyauto.cc \
                guids.c \
@@ -330,11 +340,11 @@ TRANSLATIONS += locale/ru_RU.ts \
     locale/tg_TJ.ts
 
 # Build version file
-!isEmpty( hasGit ) {
+!isEmpty( hasVersion ) {
   QMAKE_EXTRA_TARGETS += revtarget
   PRE_TARGETDEPS      += version.txt
   revtarget.target     = version.txt
-  revtarget.commands   = git describe --tags --always --dirty > $$revtarget.target
+  revtarget.commands   = $$versionCommand > $$revtarget.target
   revtarget.depends = $$SOURCES $$HEADERS $$FORMS
 }
 
@@ -355,9 +365,3 @@ TS_OUT ~= s/.ts/.qm/g
 PRE_TARGETDEPS += $$TS_OUT
 
 include( qtsingleapplication/src/qtsingleapplication.pri )
-
-
-
-
-
-
